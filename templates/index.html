@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -37,5 +37,57 @@
     <button onclick="sendCommand('start')">Start Capturing</button>
     <button onclick="sendCommand('stop')">Stop Capturing</button>
     <div id="image-container"></div>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hub-and-Spoke Dashboard</title>
+    <script>
+        function updateImages(clientId) {
+            fetch(`/get_images/${clientId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const imageContainer = document.getElementById(`image-container-${clientId}`);
+                    imageContainer.innerHTML = ''; // Clear old images
+                    data.forEach(image => {
+                        const img = document.createElement('img');
+                        img.src = image;
+                        img.style.width = '200px';
+                        img.style.margin = '10px';
+                        imageContainer.appendChild(img);
+                    });
+                });
+        }
+
+        function sendCommand(clientId, command) {
+            fetch(`/${command}_capture/${clientId}`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data.status);
+                    alert(data.status);
+                });
+        }
+
+        setInterval(() => {
+            updateImages('laptop_1');
+            updateImages('laptop_2');
+        }, 5000); // Refresh images every 5 seconds
+    </script>
+</head>
+<body>
+    <h1>Hub-and-Spoke Dashboard</h1>
+
+    <h2>Client: Laptop 1</h2>
+    <button onclick="sendCommand('laptop_1', 'start')">Start Capture</button>
+    <button onclick="sendCommand('laptop_1', 'stop')">Stop Capture</button>
+    <div id="image-container-laptop_1"></div>
+
+    <h2>Client: Laptop 2</h2>
+    <button onclick="sendCommand('laptop_2', 'start')">Start Capture</button>
+    <button onclick="sendCommand('laptop_2', 'stop')">Stop Capture</button>
+    <div id="image-container-laptop_2"></div>
 </body>
 </html>
