@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shelf Space Detection</title>
+    <style>
+        img {
+            max-width: 200px;
+            margin: 10px;
+        }
+    </style>
+    <script>
+        async function updateImages() {
+            const response = await fetch('/get_images');
+            const data = await response.json();
+            const imageContainer = document.getElementById('image-container');
+            imageContainer.innerHTML = '';
+            data.images.forEach(image => {
+                const img = document.createElement('img');
+                img.src = image;
+                imageContainer.appendChild(img);
+            });
+        }
+
+        async function sendCommand(command) {
+            const endpoint = command === 'start' ? '/start_capture' : '/stop_capture';
+            await fetch(endpoint, { method: 'POST' });
+            alert(`Capture ${command}ed!`);
+        }
+
+        setInterval(updateImages, 5000); // Refresh images every 5 seconds
+    </script>
+</head>
+<body>
+    <h1>Shelf Space Detection</h1>
+    <button onclick="sendCommand('start')">Start Capturing</button>
+    <button onclick="sendCommand('stop')">Stop Capturing</button>
+    <div id="image-container"></div>
+</body>
+</html>
