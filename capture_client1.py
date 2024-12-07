@@ -2,7 +2,6 @@ import cv2
 import time
 import base64
 import requests
-import json
 
 # Client-specific configurations
 CLIENT_ID = "laptop_1"  # Unique client identifier
@@ -30,19 +29,42 @@ def send_image_to_server(image_data, message="Empty space detected!"):
 
 def capture_images():
     """Capture images based on the command."""
-    cap = cv2.VideoCapture(0)
+    cap = None  # Initialize capture object
+
     while True:
         command = fetch_command()
+
         if command == "start":
+            if cap is None:  # Open the camera only if not already opened
+                cap = cv2.VideoCapture(0)
+                if not cap.isOpened():
+                    print(f"Error: Unable to access the camera on {CLIENT_ID}.")
+                    break
+                print(f"{CLIENT_ID} started capturing.")
+
             ret, frame = cap.read()
             if ret:
                 _, img_encoded = cv2.imencode(".jpg", frame)
                 img_data = base64.b64encode(img_encoded).decode("utf-8")
                 send_image_to_server(img_data)
+            else:
+                print("Error: Failed to capture image.")
+
             time.sleep(5)  # Adjust the capture interval
+
         elif command == "stop":
             print(f"{CLIENT_ID} stopped capturing.")
+            if cap is not None:  # Release the camera when stopping
+                cap.release()
+                cap = None
+                print(f"{CLIENT_ID}: Camera released.")
             time.sleep(5)  # Wait before checking the status again
+
+    # Cleanup if exiting the loop
+    if cap is not None:
+        cap.release()
+        print(f"{CLIENT_ID}: Camera released on exit.")
+    cv2.destroyAllWindows()
 
 if __name__ == "__main__":
     capture_images()
