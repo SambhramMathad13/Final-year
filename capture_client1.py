@@ -6,30 +6,37 @@ import requests
 # Client-specific configurations
 CLIENT_ID = "laptop_1"  # Unique client identifier
 SERVER_URL = "http://127.0.0.1:5000"  # Hub server URL
+CAPTURE_INTERVAL = 5  # Interval between captures in seconds
 
 def fetch_command():
     """Fetch the command from the server."""
     try:
         response = requests.get(f"{SERVER_URL}/get_capture_status/{CLIENT_ID}")
-        return response.json().get("command", "stop")
+        if response.status_code == 200:
+            return response.json().get("command", "stop")
+        print(f"Warning: Server returned status {response.status_code}.")
     except Exception as e:
         print(f"Error fetching command: {e}")
-        return "stop"
+    return "stop"
 
-def send_image_to_server(image_data, message="Empty space detected!"):
+def send_image_to_server(image_data, message):
     """Send image data to the server."""
     try:
         response = requests.post(
             f"{SERVER_URL}/receive_alert/{CLIENT_ID}",
             json={"image": image_data, "message": message},
         )
-        print(response.json())
+        if response.status_code == 200:
+            print(f"Server response: {response.json()}")
+        else:
+            print(f"Warning: Failed to send image. Status {response.status_code}")
     except Exception as e:
         print(f"Error sending image: {e}")
 
 def capture_images():
     """Capture images based on the command."""
     cap = None  # Initialize capture object
+    print(f"{CLIENT_ID}: Starting image capture process...")
 
     while True:
         command = fetch_command()
@@ -40,27 +47,32 @@ def capture_images():
                 if not cap.isOpened():
                     print(f"Error: Unable to access the camera on {CLIENT_ID}.")
                     break
-                print(f"{CLIENT_ID} started capturing.")
+                print(f"{CLIENT_ID}: Camera started.")
 
             ret, frame = cap.read()
             if ret:
+                # Encode the captured image to Base64
                 _, img_encoded = cv2.imencode(".jpg", frame)
                 img_data = base64.b64encode(img_encoded).decode("utf-8")
-                send_image_to_server(img_data)
+                message = f"Empty space detected by {CLIENT_ID}"  # Customize the message
+                send_image_to_server(img_data, message)
             else:
-                print("Error: Failed to capture image.")
+                print(f"{CLIENT_ID}: Error capturing image.")
 
-            time.sleep(5)  # Adjust the capture interval
+            time.sleep(CAPTURE_INTERVAL)  # Adjust the capture interval
 
         elif command == "stop":
-            print(f"{CLIENT_ID} stopped capturing.")
             if cap is not None:  # Release the camera when stopping
                 cap.release()
                 cap = None
-                print(f"{CLIENT_ID}: Camera released.")
-            time.sleep(5)  # Wait before checking the status again
+                print(f"{CLIENT_ID}: Camera stopped and released.")
+            time.sleep(CAPTURE_INTERVAL)  # Wait before checking the status again
 
-    # Cleanup if exiting the loop
+        else:
+            print(f"{CLIENT_ID}: Unknown command '{command}'. Defaulting to stop.")
+            time.sleep(CAPTURE_INTERVAL)
+
+    # Cleanup on exit
     if cap is not None:
         cap.release()
         print(f"{CLIENT_ID}: Camera released on exit.")
