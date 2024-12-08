@@ -75,9 +75,22 @@ def get_images(client_id):
             image_path = f'/static/images/{client_id}/{img_file}'
             # Derive the message from the client_id
             message = f"Empty space detected! by {client_id.replace('_', ' ')}"
-            images.append({"image": image_path, "message": message})
+            images.append({"image": image_path, "message": message, "filename": img_file})
 
     return jsonify(images)
+
+
+@app.route('/delete_image/<client_id>/<filename>', methods=['DELETE'])
+def delete_image(client_id, filename):
+    """Delete the specific image file for the client."""
+    client_folder = os.path.join(STATIC_IMAGE_FOLDER, client_id)
+    image_path = os.path.join(client_folder, filename)
+
+    if os.path.exists(image_path):
+        os.remove(image_path)
+        return jsonify({"status": "Image deleted successfully!"})
+    else:
+        return jsonify({"error": "Image not found!"}), 404
 
 
 @app.route('/')

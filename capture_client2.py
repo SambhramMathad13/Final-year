@@ -6,7 +6,7 @@ import requests
 # Client-specific configurations
 CLIENT_ID = "laptop_2"  # Unique client identifier
 SERVER_URL = "http://127.0.0.1:5000"  # Hub server URL
-CAPTURE_INTERVAL = 5  # Interval between captures in seconds
+CAPTURE_INTERVAL = 10  # Interval between captures in seconds
 
 def fetch_command():
     """Fetch the command from the server."""

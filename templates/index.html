@@ -47,7 +47,16 @@
                     message.className = 'card-text';
                     message.innerText = item.message;
 
+                    // Add delete button
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'btn btn-danger';
+                    deleteButton.innerText = 'Delete';
+                    deleteButton.onclick = function() {
+                        deleteImage(clientId, item.filename);
+                    };
+
                     cardBody.appendChild(message);
+                    cardBody.appendChild(deleteButton);
                     card.appendChild(img);
                     card.appendChild(cardBody);
 
@@ -55,6 +64,24 @@
                 });
             } catch (error) {
                 console.error(`Error updating images for ${clientId}:`, error);
+            }
+        }
+
+        async function deleteImage(clientId, filename) {
+            try {
+                const response = await fetch(`/delete_image/${clientId}/${filename}`, {
+                    method: 'DELETE',
+                });
+                const data = await response.json();
+                if (response.status === 200) {
+                    alert(data.status);
+                    updateImages(clientId);  // Refresh the images after deletion
+                } else {
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error('Error deleting image:', error);
+                alert('Failed to delete image');
             }
         }
 
