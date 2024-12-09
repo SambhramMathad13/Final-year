@@ -18,7 +18,6 @@ status_lock = Lock()
 
 @app.route('/start_capture/<client_id>', methods=['POST'])
 def start_capture(client_id):
-    """Set the command to start capturing for a specific client."""
     global client_states
     with status_lock:
         client_states[client_id] = 'start'
@@ -27,7 +26,6 @@ def start_capture(client_id):
 
 @app.route('/stop_capture/<client_id>', methods=['POST'])
 def stop_capture(client_id):
-    """Set the command to stop capturing for a specific client."""
     global client_states
     with status_lock:
         client_states[client_id] = 'stop'
@@ -36,16 +34,13 @@ def stop_capture(client_id):
 
 @app.route('/get_capture_status/<client_id>', methods=['GET'])
 def get_capture_status(client_id):
-    """Return the current capture command for a specific client."""
     global client_states
     with status_lock:
-        # Default to "stop" if no state is set for the client
         return jsonify({'command': client_states.get(client_id, 'stop')})
 
 
 @app.route('/receive_alert/<client_id>', methods=['POST'])
 def receive_alert(client_id):
-    """Receive images from clients."""
     data = request.json
     img_data = base64.b64decode(data['image'])
 
@@ -53,7 +48,8 @@ def receive_alert(client_id):
     os.makedirs(client_folder, exist_ok=True)
 
     # Save the image
-    image_filename = f"{int(time.time())}.jpg"
+    timestamp = int(time.time())
+    image_filename = f"{timestamp}.jpg"
     image_path = os.path.join(client_folder, image_filename)
     with open(image_path, "wb") as img_file:
         img_file.write(img_data)
@@ -63,39 +59,50 @@ def receive_alert(client_id):
 
 @app.route('/get_images/<client_id>', methods=['GET'])
 def get_images(client_id):
-    """Return the list of captured images with derived messages for a specific client."""
     client_folder = os.path.join(STATIC_IMAGE_FOLDER, client_id)
 
     if not os.path.exists(client_folder):
-        return jsonify([])  # No images for this client
+        return jsonify([])
 
     images = []
     for img_file in sorted(os.listdir(client_folder)):
         if img_file.endswith(".jpg"):
             image_path = f'/static/images/{client_id}/{img_file}'
-            # Derive the message from the client_id
+            # Extract timestamp from the filename
+            timestamp = img_file.split('.')[0]
+            readable_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(timestamp)))
             message = f"Empty space detected! by {client_id.replace('_', ' ')}"
-            images.append({"image": image_path, "message": message, "filename": img_file})
+            images.append({"image": image_path, "message": message, "time": readable_time})
 
     return jsonify(images)
 
 
-@app.route('/delete_image/<client_id>/<filename>', methods=['DELETE'])
-def delete_image(client_id, filename):
-    """Delete the specific image file for the client."""
-    client_folder = os.path.join(STATIC_IMAGE_FOLDER, client_id)
-    image_path = os.path.join(client_folder, filename)
+# @app.route('/delete_image/<client_id>', methods=['POST'])
+# def delete_image(client_id):
+#     data = request.json
+#     image_path = os.path.join(STATIC_IMAGE_FOLDER, client_id, data['filename'])
+#     if os.path.exists(image_path):
+#         os.remove(image_path)
+#         return jsonify({"status": "Image deleted successfully"})
+#     return jsonify({"status": "Image not found"}), 404
 
-    if os.path.exists(image_path):
-        os.remove(image_path)
-        return jsonify({"status": "Image deleted successfully!"})
-    else:
-        return jsonify({"error": "Image not found!"}), 404
+@app.route('/delete_images/<client_id>', methods=['POST'])
+def delete_images(client_id):
+    data = request.json
+    deleted_files = []
+
+    for filename in data['filenames']:
+        image_path = os.path.join(STATIC_IMAGE_FOLDER, client_id, filename)
+        if os.path.exists(image_path):
+            os.remove(image_path)
+            deleted_files.append(filename)
+
+    return jsonify({"status": "Images deleted successfully", "deleted": deleted_files})
+
 
 
 @app.route('/')
 def index():
-    """Render the main page."""
     return render_template('index.html')
 
 

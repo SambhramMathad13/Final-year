@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shelf Management Dashboard</title>
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .card {
@@ -16,92 +15,15 @@
             flex-wrap: wrap;
             gap: 10px;
         }
-        .btn {
-            margin-right: 10px;
+        .image-checkbox {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+        }
+        .card-wrapper {
+            position: relative;
         }
     </style>
-    <script>
-        async function updateImages(clientId) {
-            try {
-                const response = await fetch(`/get_images/${clientId}`);
-                const data = await response.json();
-                const imageContainer = document.getElementById(`image-container-${clientId}`);
-                imageContainer.innerHTML = ''; // Clear old images
-
-                data.forEach(item => {
-                    // Create a Bootstrap card for each image
-                    const card = document.createElement('div');
-                    card.className = 'card';
-
-                    // Add image to the card
-                    const img = document.createElement('img');
-                    img.src = item.image;
-                    img.className = 'card-img-top';
-                    img.alt = 'Shelf Image';
-
-                    // Add card body with the message
-                    const cardBody = document.createElement('div');
-                    cardBody.className = 'card-body';
-
-                    const message = document.createElement('p');
-                    message.className = 'card-text';
-                    message.innerText = item.message;
-
-                    // Add delete button
-                    const deleteButton = document.createElement('button');
-                    deleteButton.className = 'btn btn-danger';
-                    deleteButton.innerText = 'Delete';
-                    deleteButton.onclick = function() {
-                        deleteImage(clientId, item.filename);
-                    };
-
-                    cardBody.appendChild(message);
-                    cardBody.appendChild(deleteButton);
-                    card.appendChild(img);
-                    card.appendChild(cardBody);
-
-                    imageContainer.appendChild(card);
-                });
-            } catch (error) {
-                console.error(`Error updating images for ${clientId}:`, error);
-            }
-        }
-
-        async function deleteImage(clientId, filename) {
-            try {
-                const response = await fetch(`/delete_image/${clientId}/${filename}`, {
-                    method: 'DELETE',
-                });
-                const data = await response.json();
-                if (response.status === 200) {
-                    alert(data.status);
-                    updateImages(clientId);  // Refresh the images after deletion
-                } else {
-                    alert(data.error);
-                }
-            } catch (error) {
-                console.error('Error deleting image:', error);
-                alert('Failed to delete image');
-            }
-        }
-
-        async function sendCommand(clientId, command) {
-            try {
-                const response = await fetch(`/${command}_capture/${clientId}`, { method: 'POST' });
-                const data = await response.json();
-                alert(data.status);
-            } catch (error) {
-                alert(`Failed to send ${command} command to ${clientId}`);
-                console.error(`Error sending command to ${clientId}:`, error);
-            }
-        }
-
-        // Automatically update images every 15 seconds
-        setInterval(() => {
-            updateImages('laptop_1');
-            updateImages('laptop_2');
-        }, 15000);
-    </script>
 </head>
 <body>
     <div class="container">
@@ -110,21 +32,165 @@
         <!-- Laptop 1 Section -->
         <div class="mb-4">
             <h2>Laptop 1</h2>
-            <button class="btn btn-primary" onclick="sendCommand('laptop_1', 'start')">Start Capture</button>
-            <button class="btn btn-danger" onclick="sendCommand('laptop_1', 'stop')">Stop Capture</button>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#startStopModal" onclick="openStartStopModal('laptop_1', 'start')">Start Capture</button>
+            <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#startStopModal" onclick="openStartStopModal('laptop_1', 'stop')">Stop Capture</button>
+            <button class="btn btn-warning" onclick="openMultipleDeleteModal('laptop_1')">Delete Selected</button>
             <div id="image-container-laptop_1" class="image-container mt-3"></div>
         </div>
 
         <!-- Laptop 2 Section -->
         <div class="mb-4">
             <h2>Laptop 2</h2>
-            <button class="btn btn-primary" onclick="sendCommand('laptop_2', 'start')">Start Capture</button>
-            <button class="btn btn-danger" onclick="sendCommand('laptop_2', 'stop')">Stop Capture</button>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#startStopModal" onclick="openStartStopModal('laptop_2', 'start')">Start Capture</button>
+            <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#startStopModal" onclick="openStartStopModal('laptop_2', 'stop')">Stop Capture</button>
+            <button class="btn btn-warning" onclick="openMultipleDeleteModal('laptop_2')">Delete Selected</button>
             <div id="image-container-laptop_2" class="image-container mt-3"></div>
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
+    <!-- Start/Stop Confirmation Modal -->
+    <div class="modal fade" id="startStopModal" tabindex="-1" aria-labelledby="startStopModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="startStopModalLabel">Confirm Action</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to <span id="startStopAction"></span> capturing images?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="confirmStartStopButton">Yes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Delete Images</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete the selected images?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="confirmDeleteButton">Yes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let startStopClientId = null;
+        let startStopAction = null;
+        let deleteClientId = null;
+        let selectedImages = [];
+
+        function openStartStopModal(clientId, action) {
+            startStopClientId = clientId;
+            startStopAction = action;
+            document.getElementById('startStopAction').innerText = action;
+            document.getElementById('confirmStartStopButton').onclick = confirmStartStop;
+        }
+
+        async function confirmStartStop() {
+            try {
+                const response = await fetch(`/${startStopAction}_capture/${startStopClientId}`, { method: 'POST' });
+                const data = await response.json();
+                console.log(data.status);
+            } catch (error) {
+                console.error(`Failed to send ${startStopAction} command to ${startStopClientId}`);
+            }
+        }
+
+        function openMultipleDeleteModal(clientId) {
+            deleteClientId = clientId;
+            const checkboxes = document.querySelectorAll(`#image-container-${clientId} input[type="checkbox"]:checked`);
+            selectedImages = Array.from(checkboxes).map(cb => cb.value);
+
+            if (selectedImages.length === 0) {
+                alert('No images selected!');
+                return;
+            }
+
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            deleteModal.show();
+        }
+
+        async function confirmDelete() {
+            try {
+                const response = await fetch(`/delete_images/${deleteClientId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filenames: selectedImages })
+                });
+                const data = await response.json();
+                console.log(data.status);
+                updateImages(deleteClientId);
+            } catch (error) {
+                console.error('Error deleting images:', error);
+            }
+        }
+
+        document.getElementById('confirmDeleteButton').onclick = confirmDelete;
+
+        async function updateImages(clientId) {
+            try {
+                const response = await fetch(`/get_images/${clientId}`);
+                const data = await response.json();
+                const imageContainer = document.getElementById(`image-container-${clientId}`);
+                imageContainer.innerHTML = '';
+
+                data.forEach(item => {
+                    const cardWrapper = document.createElement('div');
+                    cardWrapper.className = 'card-wrapper';
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.value = item.image.split('/').pop();
+                    checkbox.className = 'image-checkbox';
+
+                    const card = document.createElement('div');
+                    card.className = 'card';
+
+                    const img = document.createElement('img');
+                    img.src = item.image;
+                    img.className = 'card-img-top';
+                    img.alt = 'Shelf Image';
+                    img.style.cursor = 'pointer';
+                    img.onclick = () => window.open(item.image, '_blank');
+
+                    const cardBody = document.createElement('div');
+                    cardBody.className = 'card-body';
+
+                    const message = document.createElement('p');
+                    message.className = 'card-text';
+                    message.innerText = `${item.message}\n${item.time}`;
+
+                    cardBody.appendChild(message);
+                    card.appendChild(img);
+                    card.appendChild(cardBody);
+
+                    cardWrapper.appendChild(checkbox);
+                    cardWrapper.appendChild(card);
+                    imageContainer.appendChild(cardWrapper);
+                });
+            } catch (error) {
+                console.error(`Error updating images for ${clientId}:`, error);
+            }
+        }
+
+        setInterval(() => {
+            updateImages('laptop_1');
+            updateImages('laptop_2');
+        }, 15000);
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
