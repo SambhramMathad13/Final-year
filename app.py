@@ -1,20 +1,68 @@
 import base64
 import os
 import time
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from threading import Lock
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'  # Change to a strong random secret key
 
 # Directory for storing images
 STATIC_IMAGE_FOLDER = 'static/images'
 if not os.path.exists(STATIC_IMAGE_FOLDER):
     os.makedirs(STATIC_IMAGE_FOLDER)
 
+# Hardcoded credentials for authentication
+USERNAME = "admin"
+PASSWORD = "admin"
+
 # State to manage commands for each client
 client_states = {}
 status_lock = Lock()
 
+
+# ------------------------------
+# Authentication Routes
+# ------------------------------
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if session.get('authenticated'):  # Prevent logged-in users from accessing login page
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        if username == USERNAME and password == PASSWORD:
+            session['authenticated'] = True
+            return redirect(url_for('index'))
+        else:
+            return render_template('login.html', error="Invalid credentials")
+
+    return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    session.pop('authenticated', None)
+    return redirect(url_for('login'))
+
+
+# ------------------------------
+# Main Index Route
+# ------------------------------
+
+@app.route('/')
+def index():
+    if not session.get('authenticated'):  # Restrict access if not logged in
+        return redirect(url_for('login'))
+    return render_template('index.html')  # Main dashboard
+
+
+# ------------------------------
+# Client Command and Alerts Management
+# ------------------------------
 
 @app.route('/start_capture/<client_id>', methods=['POST'])
 def start_capture(client_id):
@@ -77,15 +125,6 @@ def get_images(client_id):
     return jsonify(images)
 
 
-# @app.route('/delete_image/<client_id>', methods=['POST'])
-# def delete_image(client_id):
-#     data = request.json
-#     image_path = os.path.join(STATIC_IMAGE_FOLDER, client_id, data['filename'])
-#     if os.path.exists(image_path):
-#         os.remove(image_path)
-#         return jsonify({"status": "Image deleted successfully"})
-#     return jsonify({"status": "Image not found"}), 404
-
 @app.route('/delete_images/<client_id>', methods=['POST'])
 def delete_images(client_id):
     data = request.json
@@ -100,11 +139,9 @@ def delete_images(client_id):
     return jsonify({"status": "Images deleted successfully", "deleted": deleted_files})
 
 
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
+# ------------------------------
+# Run Application
+# ------------------------------
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

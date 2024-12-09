@@ -26,6 +26,14 @@
     </style>
 </head>
 <body>
+
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Shelf Management</a>
+            <button class="btn btn-outline-danger" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
     <div class="container">
         <h1 class="my-4 text-center">Shelf Management Dashboard</h1>
 
@@ -185,6 +193,18 @@
                 console.error(`Error updating images for ${clientId}:`, error);
             }
         }
+
+        function logout() {
+            fetch('/logout', { method: 'GET' })
+                .then(response => {
+                    if (response.ok) {
+                        window.location.href = '/login'; // Redirect to login page
+                    } else {
+                        alert('Logout failed.');
+                    }
+                })
+                .catch(error => console.error('Error during logout:', error));
+            }
 
         setInterval(() => {
             updateImages('laptop_1');
